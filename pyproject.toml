@@ -33,9 +33,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/<YOUR_GITHUB_USERNAME>/ugld"
-Repository = "https://github.com/<YOUR_GITHUB_USERNAME>/ugld"
-Issues = "https://github.com/<YOUR_GITHUB_USERNAME>/ugld/issues"
+Homepage = "https://github.com/michelepapucci/ugld"
+Repository = "https://github.com/michelepapucci/ugld"
+Issues = "https://github.com/michelepapucci/ugld/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
