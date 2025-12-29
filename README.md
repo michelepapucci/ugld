@@ -18,13 +18,25 @@ model_name = "gpt2"
 tok = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name)
 
-green_ids = [tok.encode(" simple", add_special_tokens=False)[0]]
+simple_words = [
+        " simple", " easy", " basic", " clear",
+        " small", " big", " light", " heavy",
+        " fast", " slow", " old", " new",
+        " good", " bad", " near", " far",
+        " start", " end", " help", " use",
+    ]
+
+green_ids = []
+for w in simple_words:
+    green_ids.extend(tok.encode(w, add_special_tokens=False))
+
+green_ids = list(set(green_ids))
 
 proc = LogitsProcessorList([
     UGLD_Towards(UGLDTowardsConfig(
         green_token_ids=green_ids,
         alpha_max=0.5,
-        tau=3.0,
+        tau=1.0,
         s=0.3,
         prior="renorm",
     ))
