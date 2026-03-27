@@ -30,26 +30,8 @@ jobs:
           python3 -m pdoc -o site --search --show-source ugld
 
           # ensure root index page points to module docs and provides simple adoption guide
-          cat > site/index.html <<'EOF'
-          <!doctype html>
-          <html lang="en">
-            <head>
-              <meta charset="utf-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1" />
-              <title>UGLD Documentation</title>
-            </head>
-            <body>
-              <h1>UGLD Documentation</h1>
-              <p>Welcome to the UGLD docs site.</p>
-              <p>
-                API docs: <a href="ugld.html">UGLD API reference</a>
-              </p>
-              <p>
-                Quick start and tutorial in <code>README.md</code> (repo root).
-              </p>
-            </body>
-          </html>
-          EOF
+          cp docs/index-template.html site/index.html
+
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
