@@ -18,7 +18,7 @@ css = """
     gap: 0.25rem;
     color: var(--text);
     text-decoration: none;
-    font-size: 0.85rem;
+    font-size: 1.25rem;
     opacity: 0.65;
     transition: opacity 150ms;
     margin-bottom: 1rem;
