@@ -27,17 +27,36 @@ from transformers import LogitsProcessor
 
 
 def _entropy_from_probs(p: torch.Tensor, eps: float) -> torch.Tensor:
-    """
-    Shannon entropy per batch row.
-    p: [B, V] probability simplex
-    returns: H: [B]
+    """Compute Shannon entropy for each row of a probability matrix.
+
+    Args:
+        p: Probability tensor of shape ``[B, V]``, where each row is a valid
+            probability simplex over the vocabulary.
+        eps: Small constant to clamp probabilities before taking the log,
+            preventing ``log(0)``.
+
+    Returns:
+        Entropy tensor of shape ``[B]``, where entry *b* is
+        ``H(p[b]) = -sum_i p[b,i] * log(p[b,i])``.
     """
     return -(p * p.clamp_min(eps).log()).sum(dim=-1)
 
 
 def _valid_token_ids(ids: Sequence[int] | Iterable[int], V: int, device: torch.device) -> torch.Tensor:
-    """
-    Convert ids to a unique sorted LongTensor on device, filtered to [0, V).
+    """Sanitise a collection of token ids for use against a vocabulary of size *V*.
+
+    Deduplicates and sorts the ids, then discards any that fall outside
+    ``[0, V)``.
+
+    Args:
+        ids: Iterable of integer token ids (may contain duplicates or
+            out-of-range values).
+        V: Vocabulary size; only ids in ``[0, V)`` are kept.
+        device: Target device for the returned tensor.
+
+    Returns:
+        1-D ``LongTensor`` of unique, sorted, in-range token ids on *device*.
+        Returns an empty tensor if no valid ids remain.
     """
     uniq = sorted({int(i) for i in ids})
     if not uniq:
@@ -47,8 +66,26 @@ def _valid_token_ids(ids: Sequence[int] | Iterable[int], V: int, device: torch.d
 
 
 def _gate_from_entropy(H: torch.Tensor, tau: float, s: float) -> torch.Tensor:
-    """
-    φ(p) = σ((H-τ)/s), with s strictly positive.
+    """Compute the uncertainty gate φ(p) = σ((H − τ) / s).
+
+    The gate is close to 0 when entropy is well below the threshold *τ*
+    (model is confident) and close to 1 when entropy is well above *τ*
+    (model is uncertain).  The smoothing factor *s* controls how sharply
+    the gate transitions between the two regimes.
+
+    Args:
+        H: Per-sample entropy tensor of shape ``[B]``.
+        tau: Entropy threshold.  The gate reaches 0.5 when ``H == tau``.
+            Should be chosen in ``[0, log |V|]``; values outside this range
+            produce a gate that is always closed or always open.
+        s: Smoothing factor (must be strictly positive).  Smaller values
+            make the gate switch more abruptly.
+
+    Returns:
+        Gate tensor of shape ``[B]`` with values in ``(0, 1)``.
+
+    Raises:
+        ValueError: If *s* is not strictly positive.
     """
     if s <= 0:
         raise ValueError("UGLD requires s > 0.")
@@ -57,6 +94,37 @@ def _gate_from_entropy(H: torch.Tensor, tau: float, s: float) -> torch.Tensor:
 
 @dataclass(frozen=True)
 class UGLDTowardsConfig:
+    """Configuration for :class:`UGLD_Towards`.
+
+    Attributes:
+        green_token_ids: Token ids that form the *green* vocabulary — the set
+            of tokens the model is encouraged to generate.  Duplicates and
+            out-of-range ids are ignored at runtime.
+        alpha_max: Maximum mixing coefficient α ∈ [0, 1].  The effective α at
+            each step is ``alpha_max * φ(p)``, so the actual intervention is
+            always at most *alpha_max*.  Defaults to ``0.25``.
+        tau: Entropy threshold τ for the gate φ.  The gate is ~0.5 when the
+            per-token entropy equals *tau*.  A good starting point is the
+            median entropy over your dataset's decoding steps.  Defaults to
+            ``3.0``.
+        s: Smoothing factor s > 0 for the gate sigmoid.  Smaller values make
+            the gate switch more sharply.  Defaults to ``0.3``.
+        eps: Small constant for numerical stability in log and division
+            operations.  Defaults to ``1e-12``.
+        prior: Which conditioning prior *q* to use:
+
+            - ``"uniform"`` — uniform mass over all green tokens.
+            - ``"topk"`` — uniform mass over the *topk* green tokens with the
+              highest probability under the current model distribution.
+            - ``"renorm"`` — renormalise the current model distribution
+              restricted to green tokens (i.e. ``q_i ∝ p_i`` for i ∈ G).
+
+            Defaults to ``"renorm"``.
+        topk: Number of green candidates to keep when ``prior="topk"``.
+            Clamped to the number of valid green tokens at runtime.
+            Defaults to ``16``.
+    """
+
     green_token_ids: Sequence[int]
     alpha_max: float = 0.25
     tau: float = 3.0
@@ -67,20 +135,49 @@ class UGLDTowardsConfig:
 
 
 class UGLD_Towards(LogitsProcessor):
-    """
-    UGLD-t: condition *towards* a set of tokens (green vocabulary).
+    """Condition generation *towards* a predefined vocabulary (UGLD-t).
 
-    At each decoding step:
-      p = SoftMax(z)
-      H = -Σ p log p
-      φ = σ((H-τ)/s)
-      α = α_max * φ
-      p' = (1-α)p + α q
+    At each decoding step the model's next-token distribution *p* is mixed
+    with a conditioning prior *q* that concentrates probability mass on the
+    *green* tokens.  The mixing strength is gated by the model's predictive
+    uncertainty, measured via Shannon entropy, so that intervention is strong
+    when the model is uncertain and negligible when it is confident.
 
-    q is a prior supported only on green tokens, with three options:
-      - "uniform": uniform over all valid green tokens
-      - "topk": uniform over the top-K green tokens by current p
-      - "renorm": q_i = p_i / Σ_{j in G} p_j  for i in G; else 0
+    Formally, at each step:
+
+    .. code-block:: text
+
+        p  = SoftMax(z)               # current model distribution
+        H  = -Σ p_i log p_i           # Shannon entropy
+        φ  = σ((H - τ) / s)           # uncertainty gate ∈ (0, 1)
+        α  = α_max · φ                # effective mixing coefficient
+        p' = (1 − α) p + α q          # conditioned distribution
+
+    The output is ``log(p')``; because ``SoftMax(log(p')) = p'``, this is a
+    valid drop-in replacement for the raw logits expected by the HuggingFace
+    generation pipeline.
+
+    Args:
+        config: A :class:`UGLDTowardsConfig` instance specifying the green
+            vocabulary and all hyperparameters.
+
+    Raises:
+        ValueError: If ``config.alpha_max`` is outside ``[0, 1]`` or
+            ``config.topk`` is not positive.
+
+    Example::
+
+        from transformers import LogitsProcessorList
+        from ugld import UGLD_Towards, UGLDTowardsConfig
+
+        processor = UGLD_Towards(UGLDTowardsConfig(
+            green_token_ids=green_ids,
+            alpha_max=0.5,
+            tau=1.0,
+            s=0.3,
+            prior="renorm",
+        ))
+        out = model.generate(**inputs, logits_processor=LogitsProcessorList([processor]))
     """
 
     def __init__(self, config: UGLDTowardsConfig):
@@ -96,8 +193,20 @@ class UGLD_Towards(LogitsProcessor):
         self._uniform_meta = None  # (V, device, dtype)
 
     def _uniform_prior(self, V: int, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
-        """
-        q: [V] uniform over green tokens, else 0. Cached.
+        """Build (and cache) a uniform prior over the green vocabulary.
+
+        Returns a 1-D tensor of shape ``[V]`` where each green token receives
+        probability ``1 / |G|`` and all other tokens receive ``0``.  The
+        result is cached and reused as long as *V*, *device*, and *dtype*
+        remain unchanged.
+
+        Args:
+            V: Vocabulary size.
+            device: Target device.
+            dtype: Target floating-point dtype.
+
+        Returns:
+            Prior tensor of shape ``[V]``.
         """
         meta = (V, device, dtype)
         if self._uniform_q is not None and self._uniform_meta == meta:
@@ -114,10 +223,19 @@ class UGLD_Towards(LogitsProcessor):
 
     @torch.no_grad()
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
-        """
-        scores: [B, V] logits
-        returns: [B, V] logits (we return log-probabilities for numerical stability;
-                 SoftMax(log p') == p')
+        """Apply UGLD-t to a batch of logits.
+
+        Args:
+            input_ids: Previously generated token ids, shape ``[B, T]``.
+                Not used directly but required by the HuggingFace
+                ``LogitsProcessor`` interface.
+            scores: Raw logits produced by the model, shape ``[B, V]``.
+
+        Returns:
+            Modified log-probabilities of shape ``[B, V]``.  Applying
+            ``SoftMax`` to the output yields the conditioned distribution
+            ``p' = (1 − α) p + α q``.  If no valid green tokens exist the
+            original *scores* are returned unchanged.
         """
         B, V = scores.shape
         device, dtype = scores.device, scores.dtype
@@ -175,6 +293,36 @@ class UGLD_Towards(LogitsProcessor):
 
 @dataclass(frozen=True)
 class UGLDAgainstConfig:
+    """Configuration for :class:`UGLD_Against`.
+
+    Attributes:
+        red_token_ids: Token ids that form the *red* vocabulary — the set of
+            tokens the model is discouraged from generating.  Duplicates and
+            out-of-range ids are ignored at runtime.
+        lambda_max: Maximum logit penalty λ ≥ 0.  The effective penalty at
+            each step is ``lambda_max * φ(p)``, so stronger penalties require
+            higher *lambda_max*.  Defaults to ``4.0``.
+        tau: Entropy threshold τ for the gate φ.  See
+            :class:`UGLDTowardsConfig` for guidance on choosing this value.
+            Defaults to ``3.0``.
+        s: Smoothing factor s > 0 for the gate sigmoid.  Defaults to ``0.3``.
+        eps: Small constant for numerical stability.  Defaults to ``1e-12``.
+        weights: How to assign per-token penalty weights within the red
+            vocabulary:
+
+            - ``"fixed"`` — every red token receives the same penalty weight
+              *fixed_r*.
+            - ``"dynamic_minmax"`` — penalty weights are proportional to the
+              model's current probability for each red token, with min-max
+              normalisation mapping the range to ``[1, 2]``.  Tokens the model
+              is most likely to produce receive the heaviest penalty.
+
+            Defaults to ``"fixed"``.
+        fixed_r: Penalty weight applied to each red token when
+            ``weights="fixed"``.  Must be strictly positive.  Defaults to
+            ``1.0``.
+    """
+
     red_token_ids: Sequence[int]
     lambda_max: float = 4.0
     tau: float = 3.0
@@ -185,22 +333,47 @@ class UGLDAgainstConfig:
 
 
 class UGLD_Against(LogitsProcessor):
-    """
-    UGLD-a: condition *against* a set of tokens (red vocabulary) in logit space.
+    """Condition generation *against* a predefined vocabulary (UGLD-a).
 
-    At each decoding step:
-      p = SoftMax(z)
-      H = -Σ p log p
-      φ = σ((H-τ)/s)
-      λ = λ_max * φ
-      z' = z - λ r
+    At each decoding step a penalty is subtracted from the logits of *red*
+    tokens.  The penalty strength is gated by the model's predictive
+    uncertainty so that suppression is strong when the model is uncertain and
+    negligible when it is confident.  Because the penalty is applied in logit
+    space, the output remains unnormalised logits and can be passed directly
+    to subsequent processors or sampling routines.
 
-    r is a non-negative weight vector supported only on red tokens:
-      - "fixed": r_i = fixed_r for i in R; else 0
-      - "dynamic_minmax": allocate larger penalties to red tokens the model currently
-        prefers, using min-max normalization of {p_i : i in R} mapped to [1,2]:
-           f_i = (p_i - min(p^R)) / (max(p^R) - min(p^R) + eps)
-           r_i = 1 + f_i   for i in R; else 0
+    Formally, at each step:
+
+    .. code-block:: text
+
+        p  = SoftMax(z)               # current model distribution
+        H  = -Σ p_i log p_i           # Shannon entropy
+        φ  = σ((H - τ) / s)           # uncertainty gate ∈ (0, 1)
+        λ  = λ_max · φ                # effective penalty strength
+        z' = z − λ r                  # penalised logits
+
+    where *r* is a non-negative weight vector supported on the red tokens.
+
+    Args:
+        config: A :class:`UGLDAgainstConfig` instance specifying the red
+            vocabulary and all hyperparameters.
+
+    Raises:
+        ValueError: If ``config.lambda_max < 0`` or ``config.fixed_r <= 0``.
+
+    Example::
+
+        from transformers import LogitsProcessorList
+        from ugld import UGLD_Against, UGLDAgainstConfig
+
+        processor = UGLD_Against(UGLDAgainstConfig(
+            red_token_ids=red_ids,
+            lambda_max=4.0,
+            tau=1.0,
+            s=0.3,
+            weights="fixed",
+        ))
+        out = model.generate(**inputs, logits_processor=LogitsProcessorList([processor]))
     """
 
     def __init__(self, config: UGLDAgainstConfig):
@@ -213,9 +386,19 @@ class UGLD_Against(LogitsProcessor):
 
     @torch.no_grad()
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
-        """
-        scores: [B, V] logits
-        returns: [B, V] logits after applying a gated penalty on red tokens
+        """Apply UGLD-a to a batch of logits.
+
+        Args:
+            input_ids: Previously generated token ids, shape ``[B, T]``.
+                Not used directly but required by the HuggingFace
+                ``LogitsProcessor`` interface.
+            scores: Raw logits produced by the model, shape ``[B, V]``.
+
+        Returns:
+            Penalised logits of shape ``[B, V]``, equal to
+            ``z' = z − λ r``.  If no valid red tokens exist, or if
+            ``lambda_max`` is zero, the original *scores* are returned
+            unchanged.
         """
         B, V = scores.shape
         device = scores.device
