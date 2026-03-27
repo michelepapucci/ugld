@@ -94,44 +94,43 @@ def _gate_from_entropy(H: torch.Tensor, tau: float, s: float) -> torch.Tensor:
 
 @dataclass(frozen=True)
 class UGLDTowardsConfig:
-    """Configuration for :class:`UGLD_Towards`.
-
-    Attributes:
-        green_token_ids: Token ids that form the *green* vocabulary — the set
-            of tokens the model is encouraged to generate.  Duplicates and
-            out-of-range ids are ignored at runtime.
-        alpha_max: Maximum mixing coefficient α ∈ [0, 1].  The effective α at
-            each step is ``alpha_max * φ(p)``, so the actual intervention is
-            always at most *alpha_max*.  Defaults to ``0.25``.
-        tau: Entropy threshold τ for the gate φ.  The gate is ~0.5 when the
-            per-token entropy equals *tau*.  A good starting point is the
-            median entropy over your dataset's decoding steps.  Defaults to
-            ``3.0``.
-        s: Smoothing factor s > 0 for the gate sigmoid.  Smaller values make
-            the gate switch more sharply.  Defaults to ``0.3``.
-        eps: Small constant for numerical stability in log and division
-            operations.  Defaults to ``1e-12``.
-        prior: Which conditioning prior *q* to use:
-
-            - ``"uniform"`` — uniform mass over all green tokens.
-            - ``"topk"`` — uniform mass over the *topk* green tokens with the
-              highest probability under the current model distribution.
-            - ``"renorm"`` — renormalise the current model distribution
-              restricted to green tokens (i.e. ``q_i ∝ p_i`` for i ∈ G).
-
-            Defaults to ``"renorm"``.
-        topk: Number of green candidates to keep when ``prior="topk"``.
-            Clamped to the number of valid green tokens at runtime.
-            Defaults to ``16``.
-    """
+    """Configuration for :class:`UGLD_Towards`."""
 
     green_token_ids: Sequence[int]
+    """Token ids that form the *green* vocabulary — the set of tokens the model
+    is encouraged to generate.  Duplicates and out-of-range ids are ignored at
+    runtime."""
+
     alpha_max: float = 0.25
+    """Maximum mixing coefficient α ∈ [0, 1].  The effective α at each step is
+    ``alpha_max * φ(p)``, so the actual intervention is always at most
+    *alpha_max*."""
+
     tau: float = 3.0
+    """Entropy threshold τ for the gate φ.  The gate is ~0.5 when the
+    per-token entropy equals *tau*.  A good starting point is the median
+    entropy over your dataset's decoding steps."""
+
     s: float = 0.3
+    """Smoothing factor s > 0 for the gate sigmoid.  Smaller values make the
+    gate switch more sharply."""
+
     eps: float = 1e-12
+    """Small constant for numerical stability in log and division operations."""
+
     prior: Literal["uniform", "topk", "renorm"] = "renorm"
+    """Which conditioning prior *q* to use:
+
+    - `"uniform"` — uniform mass over all green tokens.
+    - `"topk"` — uniform mass over the *topk* green tokens with the highest
+      probability under the current model distribution.
+    - `"renorm"` — renormalise the current model distribution restricted to
+      green tokens (i.e. ``q_i ∝ p_i`` for i ∈ G).
+    """
+
     topk: int = 16
+    """Number of green candidates to keep when ``prior="topk"``.  Clamped to
+    the number of valid green tokens at runtime."""
 
 
 class UGLD_Towards(LogitsProcessor):
@@ -293,43 +292,42 @@ class UGLD_Towards(LogitsProcessor):
 
 @dataclass(frozen=True)
 class UGLDAgainstConfig:
-    """Configuration for :class:`UGLD_Against`.
-
-    Attributes:
-        red_token_ids: Token ids that form the *red* vocabulary — the set of
-            tokens the model is discouraged from generating.  Duplicates and
-            out-of-range ids are ignored at runtime.
-        lambda_max: Maximum logit penalty λ ≥ 0.  The effective penalty at
-            each step is ``lambda_max * φ(p)``, so stronger penalties require
-            higher *lambda_max*.  Defaults to ``4.0``.
-        tau: Entropy threshold τ for the gate φ.  See
-            :class:`UGLDTowardsConfig` for guidance on choosing this value.
-            Defaults to ``3.0``.
-        s: Smoothing factor s > 0 for the gate sigmoid.  Defaults to ``0.3``.
-        eps: Small constant for numerical stability.  Defaults to ``1e-12``.
-        weights: How to assign per-token penalty weights within the red
-            vocabulary:
-
-            - ``"fixed"`` — every red token receives the same penalty weight
-              *fixed_r*.
-            - ``"dynamic_minmax"`` — penalty weights are proportional to the
-              model's current probability for each red token, with min-max
-              normalisation mapping the range to ``[1, 2]``.  Tokens the model
-              is most likely to produce receive the heaviest penalty.
-
-            Defaults to ``"fixed"``.
-        fixed_r: Penalty weight applied to each red token when
-            ``weights="fixed"``.  Must be strictly positive.  Defaults to
-            ``1.0``.
-    """
+    """Configuration for :class:`UGLD_Against`."""
 
     red_token_ids: Sequence[int]
+    """Token ids that form the *red* vocabulary — the set of tokens the model
+    is discouraged from generating.  Duplicates and out-of-range ids are
+    ignored at runtime."""
+
     lambda_max: float = 4.0
+    """Maximum logit penalty λ ≥ 0.  The effective penalty at each step is
+    ``lambda_max * φ(p)``, so stronger penalties require higher
+    *lambda_max*."""
+
     tau: float = 3.0
+    """Entropy threshold τ for the gate φ.  See :class:`UGLDTowardsConfig`
+    for guidance on choosing this value."""
+
     s: float = 0.3
+    """Smoothing factor s > 0 for the gate sigmoid.  Smaller values make the
+    gate switch more sharply."""
+
     eps: float = 1e-12
+    """Small constant for numerical stability in log and division operations."""
+
     weights: Literal["fixed", "dynamic_minmax"] = "fixed"
+    """How to assign per-token penalty weights within the red vocabulary:
+
+    - `"fixed"` — every red token receives the same penalty weight *fixed_r*.
+    - `"dynamic_minmax"` — penalty weights are proportional to the model's
+      current probability for each red token, with min-max normalisation
+      mapping the range to [1, 2].  Tokens the model is most likely to produce
+      receive the heaviest penalty.
+    """
+
     fixed_r: float = 1.0
+    """Penalty weight applied to each red token when ``weights="fixed"``.
+    Must be strictly positive."""
 
 
 class UGLD_Against(LogitsProcessor):

@@ -51,3 +51,5 @@ out = model.generate(
 )
 print(tok.decode(out[0], skip_special_tokens=True))
 ```
+
+You can find a notebook on how to start using UGLD in ```examples/quickstart.ipynb``` or hosted on [colab](https://colab.research.google.com/drive/1CyD7EESDZPpKaIYx7g_OQo6GEuEkkq2k?usp=sharing).
