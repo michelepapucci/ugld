@@ -22,6 +22,7 @@ model = AutoModelForCausalLM.from_pretrained(model_name)
 simple_words = [" simple", " easy", " basic", " clear"]
 
 green_ids = []
+
 for w in simple_words:
     green_ids.extend(tok.encode(w, add_special_tokens=False))
 
