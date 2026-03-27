@@ -27,7 +27,7 @@ jobs:
           PYTHONPATH: src
         run: |
           rm -rf site
-          pdoc -o site --search --show-source ugld
+          python3 -m pdoc -o site --search --show-source ugld
 
           # ensure root index page points to module docs and provides simple adoption guide
           cat > site/index.html <<'EOF'
