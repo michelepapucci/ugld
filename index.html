@@ -16,6 +16,8 @@
       code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
       .api-link { display: inline-block; margin-top: 1rem; font-weight: 600; font-size: 1rem; }
       hr { border: none; border-top: 1px solid #e0e0e0; margin: 1.4rem 0; }
+      .notebook-links { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.4rem; }
+      .notebook-links a { font-size: 0.9rem; }
     </style>
   </head>
   <body>
@@ -24,6 +26,7 @@
       <p class="subtitle">Uncertainty-Gated Lexical Decoding &mdash; logits processors for HuggingFace Transformers.</p>
 
       <h2>Install</h2>
+      <p>UGLD is available on PyPI:</p>
       <span class="install">pip install ugld</span>
 
       <h2>Quick start</h2>
@@ -67,8 +70,27 @@ out = model.generate(
 )
 print(tok.decode(out[0], skip_special_tokens=True))</code></pre>
 
+      <p>For a more complete walkthrough, see the interactive notebook:</p>
+      <div class="notebook-links">
+        <a href="https://github.com/michelepapucci/ugld/blob/master/examples/quickstart.ipynb">&#128214; quickstart.ipynb (GitHub)</a>
+        <a href="https://colab.research.google.com/drive/1CyD7EESDZPpKaIYx7g_OQo6GEuEkkq2k?usp=sharing">&#9654; Open in Colab</a>
+      </div>
+
       <hr />
       <a class="api-link" href="ugld.html">API reference &rarr;</a>
+
+      <hr />
+      <h2>Citation</h2>
+      <p>If you use UGLD in your research, please cite:</p>
+      <pre><code>@inproceedings{papucci-etal-2026-ugld,
+    title     = {Lexical Conditioning of Model{'}s Distribution through
+                 Uncertainty-gated Soft-Mixing of Probabilities},
+    author    = {Papucci, Michele and Venturi, Giulia and Dell{'}Orletta, Felice},
+    booktitle = {Proceedings of the Workshop on ReadIxTsar @ LREC 2026},
+    year      = {2026},
+    address   = {Torino, Italy},
+    publisher = {ELRA and ICCL},
+}</code></pre>
     </div>
   </body>
 </html>
