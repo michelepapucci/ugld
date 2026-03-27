@@ -4,33 +4,281 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>UGLD Documentation</title>
+    <script>
+      MathJax = {
+        tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
     <style>
-      body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 2rem auto; max-width: 60rem; padding: 0 1rem; line-height: 1.6; color: #212529; }
+      *, *::before, *::after { box-sizing: border-box; }
+
+      body {
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        line-height: 1.6;
+        color: #212529;
+        background: #f9f9f9;
+      }
+
+      .page-layout {
+        display: flex;
+        align-items: flex-start;
+        max-width: 72rem;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+        gap: 2rem;
+      }
+
+      /* ── Sidebar ── */
+      .sidebar {
+        position: sticky;
+        top: 2rem;
+        flex: 0 0 11rem;
+        min-width: 9rem;
+      }
+
+      .sidebar nav {
+        border-left: 2px solid #dcdcdc;
+        padding-left: 0.85rem;
+      }
+
+      .sidebar nav p {
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #6c757d;
+        margin: 0 0 0.5rem;
+      }
+
+      .sidebar nav ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+      }
+
+      .sidebar nav ul li a {
+        display: block;
+        font-size: 0.875rem;
+        color: #495057;
+        text-decoration: none;
+        padding: 0.2rem 0;
+        transition: color 0.15s;
+      }
+
+      .sidebar nav ul li a:hover,
+      .sidebar nav ul li a.active {
+        color: #1e60d0;
+      }
+
+      /* ── Main card ── */
+      .card {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 1.8rem 2rem;
+        border: 1px solid #dcdcdc;
+        border-radius: 8px;
+        background: #fff;
+      }
+
       h1 { color: #10284B; margin-bottom: 0.25rem; }
-      h2 { color: #10284B; font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+      h2 {
+        color: #10284B;
+        font-size: 1.1rem;
+        margin-top: 2rem;
+        margin-bottom: 0.5rem;
+        padding-top: 0.5rem;
+      }
+      h3 {
+        font-size: 0.95rem;
+        color: #10284B;
+        margin-top: 1.2rem;
+        margin-bottom: 0.3rem;
+      }
+
       a { color: #1e60d0; }
-      .card { max-width: 52rem; padding: 1.4rem 1.6rem; border: 1px solid #dcdcdc; border-radius: 8px; background: #fff; }
+
       .subtitle { color: #6c757d; margin-top: 0; margin-bottom: 1.2rem; }
-      .install { display: inline-block; background: #f3f4f6; border: 1px solid #dcdcdc; border-radius: 5px; padding: 0.3rem 0.8rem; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.9rem; }
-      pre { background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; font-size: 0.875rem; line-height: 1.5; }
+
+      .install {
+        display: inline-block;
+        background: #f3f4f6;
+        border: 1px solid #dcdcdc;
+        border-radius: 5px;
+        padding: 0.3rem 0.8rem;
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 0.9rem;
+      }
+
+      pre {
+        background: #f8f8f8;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 1rem 1.2rem;
+        overflow-x: auto;
+        font-size: 0.875rem;
+        line-height: 1.5;
+      }
+
       code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
-      .api-link { display: inline-block; margin-top: 1rem; font-weight: 600; font-size: 1rem; }
-      hr { border: none; border-top: 1px solid #e0e0e0; margin: 1.4rem 0; }
+
+      .api-link { display: inline-block; margin-top: 0.2rem; font-weight: 600; font-size: 1rem; }
+
+      hr { border: none; border-top: 1px solid #e0e0e0; margin: 1.6rem 0; }
+
       .notebook-links { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.4rem; }
       .notebook-links a { font-size: 0.9rem; }
+
+      /* formula block */
+      .formula-block {
+        background: #f3f4f6;
+        border: 1px solid #dcdcdc;
+        border-radius: 6px;
+        padding: 0.8rem 1.2rem;
+        margin: 0.8rem 0;
+        text-align: center;
+        overflow-x: auto;
+      }
+
+      /* pill list for priors */
+      .pill-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin: 0.5rem 0;
+        padding: 0;
+        list-style: none;
+      }
+      .pill-list li {
+        background: #eef2ff;
+        border: 1px solid #c7d4f7;
+        border-radius: 20px;
+        padding: 0.15rem 0.7rem;
+        font-size: 0.85rem;
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      }
+
+      @media (max-width: 640px) {
+        .page-layout { flex-direction: column; }
+        .sidebar { position: static; flex: none; width: 100%; }
+        .sidebar nav { border-left: none; border-bottom: 2px solid #dcdcdc; padding: 0 0 0.75rem; }
+        .sidebar nav ul { flex-direction: row; flex-wrap: wrap; gap: 0.5rem; }
+      }
     </style>
   </head>
   <body>
-    <div class="card">
-      <h1>UGLD</h1>
-      <p class="subtitle">Uncertainty-Gated Lexical Decoding &mdash; logits processors for HuggingFace Transformers.</p>
+    <div class="page-layout">
 
-      <h2>Install</h2>
-      <p>UGLD is available on PyPI:</p>
-      <span class="install">pip install ugld</span>
+      <!-- ── Sidebar navigation ── -->
+      <aside class="sidebar">
+        <nav>
+          <p>On this page</p>
+          <ul>
+            <li><a href="#install">Install</a></li>
+            <li><a href="#how-it-works">How it works</a></li>
+            <li><a href="#quickstart">Quickstart</a></li>
+            <li><a href="#api-reference">API Reference</a></li>
+            <li><a href="#citation">Citation</a></li>
+          </ul>
+        </nav>
+      </aside>
 
-      <h2>Quick start</h2>
-      <pre><code>import torch
+      <!-- ── Main content ── -->
+      <main class="card">
+        <h1>UGLD</h1>
+        <p class="subtitle">Uncertainty-Gated Lexical Decoding &mdash; logits processors for HuggingFace Transformers.</p>
+
+        <!-- Install -->
+        <h2 id="install">Install</h2>
+        <p>UGLD is available on PyPI:</p>
+        <span class="install">pip install ugld</span>
+
+        <hr />
+
+        <!-- How it works -->
+        <h2 id="how-it-works">How it works</h2>
+        <p>
+          UGLD modulates decoding-time lexical interventions according to the model's own uncertainty,
+          so control is applied strongly when the model is unsure and backs off when it is confident.
+          This keeps generated text fluent even at high intervention strengths.
+        </p>
+
+        <h3>Entropy gate</h3>
+        <p>
+          At each decoding step the model produces a probability distribution $\mathbf{p}$ over its
+          vocabulary. The Shannon entropy of that distribution,
+        </p>
+        <div class="formula-block">
+          $$ H(\mathbf{p}) = -\sum_i p_i \log p_i $$
+        </div>
+        <p>
+          is used to drive a smooth sigmoid gate $\phi(\mathbf{p}) \in [0, 1]$:
+        </p>
+        <div class="formula-block">
+          $$ \phi(\mathbf{p}) = \sigma\!\left(\frac{H(\mathbf{p}) - \tau}{s}\right) $$
+        </div>
+        <p>
+          $\tau$ is an entropy threshold &mdash; the gate is nearly closed when $H(\mathbf{p}) \ll \tau$
+          (confident prediction) and fully open when $H(\mathbf{p}) \gg \tau$ (uncertain prediction).
+          $s > 0$ controls how fast the transition happens.
+        </p>
+
+        <h3>Conditioning towards a vocabulary (UGLD-t)</h3>
+        <p>
+          Given a set of <em>green</em> token ids $\mathcal{V}_\text{green}$, UGLD-t blends the model's
+          distribution $\mathbf{p}$ with a conditioning prior $\mathbf{q}$ concentrated on those tokens:
+        </p>
+        <div class="formula-block">
+          $$ \mathbf{p}' = (1 - \alpha)\,\mathbf{p} + \alpha\,\mathbf{q}, \qquad \alpha = \phi(\mathbf{p})\,\alpha_\text{max} $$
+        </div>
+        <p>
+          Because $\alpha \in [0,1]$ this is always a valid convex combination.
+          Three built-in priors are available for $\mathbf{q}$:
+        </p>
+        <ul class="pill-list">
+          <li>uniform</li>
+          <li>top-k</li>
+          <li>renorm</li>
+        </ul>
+        <p style="font-size:0.9rem;color:#495057;">
+          <strong>uniform</strong> spreads mass equally over all green tokens;
+          <strong>top-k</strong> restricts to the top-$K$ green tokens by current probability;
+          <strong>renorm</strong> re-normalises the model's own distribution over the green set
+          (generally the strongest and most adaptive choice).
+        </p>
+
+        <h3>Conditioning against a vocabulary (UGLD-a)</h3>
+        <p>
+          Given a set of <em>red</em> token ids $\mathcal{V}_\text{red}$, UGLD-a subtracts a
+          scaled penalty vector $\lambda \mathbf{r}$ from the raw logits $\mathbf{z}$ before softmax:
+        </p>
+        <div class="formula-block">
+          $$ \mathbf{z}' = \mathbf{z} - \lambda\,\mathbf{r}, \qquad \lambda = \phi(\mathbf{p})\,\lambda_\text{max} $$
+        </div>
+        <p>
+          Working in logit space avoids negative probabilities. Two weight-vector strategies are available:
+        </p>
+        <ul class="pill-list">
+          <li>fixed</li>
+          <li>dynamic</li>
+        </ul>
+        <p style="font-size:0.9rem;color:#495057;">
+          <strong>fixed</strong> applies a uniform penalty of 1 to every red token;
+          <strong>dynamic</strong> scales each red token's penalty by its current probability
+          (via min-max normalisation to $[1, 2]$), concentrating pressure where it matters most.
+        </p>
+
+        <hr />
+
+        <!-- Quickstart -->
+        <h2 id="quickstart">Quickstart</h2>
+        <pre><code>import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, LogitsProcessorList
 from ugld import UGLD_Towards, UGLDTowardsConfig
 
@@ -70,19 +318,24 @@ out = model.generate(
 )
 print(tok.decode(out[0], skip_special_tokens=True))</code></pre>
 
-      <p>For a more complete walkthrough, see the interactive notebook:</p>
-      <div class="notebook-links">
-        <a href="https://github.com/michelepapucci/ugld/blob/master/examples/quickstart.ipynb">&#128214; quickstart.ipynb (GitHub)</a>
-        <a href="https://colab.research.google.com/drive/1CyD7EESDZPpKaIYx7g_OQo6GEuEkkq2k?usp=sharing">&#9654; Open in Colab</a>
-      </div>
+        <p>For a more complete walkthrough, see the interactive notebook:</p>
+        <div class="notebook-links">
+          <a href="https://github.com/michelepapucci/ugld/blob/master/examples/quickstart.ipynb">&#128214; quickstart.ipynb (GitHub)</a>
+          <a href="https://colab.research.google.com/drive/1CyD7EESDZPpKaIYx7g_OQo6GEuEkkq2k?usp=sharing">&#9654; Open in Colab</a>
+        </div>
 
-      <hr />
-      <a class="api-link" href="ugld.html">API reference &rarr;</a>
+        <hr />
 
-      <hr />
-      <h2>Citation</h2>
-      <p>If you use UGLD in your research, please cite:</p>
-      <pre><code>@inproceedings{papucci-etal-2026-ugld,
+        <!-- API Reference -->
+        <h2 id="api-reference">API Reference</h2>
+        You can find the Full API Reference <a class="api-link" href="ugld.html">Here</a>.
+
+        <hr />
+
+        <!-- Citation -->
+        <h2 id="citation">Citation</h2>
+        <p>If you use UGLD in your research, please cite:</p>
+        <pre><code>@inproceedings{papucci-etal-2026-ugld,
     title     = {Lexical Conditioning of Model{'}s Distribution through
                  Uncertainty-gated Soft-Mixing of Probabilities},
     author    = {Papucci, Michele and Venturi, Giulia and Dell{'}Orletta, Felice},
@@ -90,6 +343,30 @@ print(tok.decode(out[0], skip_special_tokens=True))</code></pre>
     year      = {2026},
     address   = {Palma, Spain},
 }</code></pre>
+      </main>
+
     </div>
+
+    <script>
+      // Highlight the active sidebar link based on scroll position
+      (function () {
+        const links = document.querySelectorAll('.sidebar nav ul li a');
+        const sections = Array.from(links).map(l => document.querySelector(l.getAttribute('href')));
+
+        function onScroll() {
+          const scrollY = window.scrollY + 80;
+          let current = sections[0];
+          for (const sec of sections) {
+            if (sec && sec.offsetTop <= scrollY) current = sec;
+          }
+          links.forEach(l => {
+            l.classList.toggle('active', l.getAttribute('href') === '#' + current.id);
+          });
+        }
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+      })();
+    </script>
   </body>
 </html>
