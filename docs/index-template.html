@@ -165,17 +165,19 @@
       }
 
       @media (max-width: 640px) {
-        body { background: #fff; }
+        /* clip overflow without creating a scroll container (preserves sticky) */
+        body {
+          background: #fff;
+          overflow-x: clip;
+        }
 
         .page-layout {
           flex-direction: column;
           padding: 0;
           gap: 0;
-          width: 100%;
-          max-width: 100vw;
         }
 
-        /* sticky horizontal nav strip */
+        /* sticky top nav bar — wrapping pills, no horizontal scroll */
         .sidebar {
           position: sticky;
           top: 0;
@@ -183,7 +185,7 @@
           width: 100%;
           background: #fff;
           border-bottom: 1px solid #dcdcdc;
-          padding: 0.55rem 0.9rem;
+          padding: 0.5rem 1rem;
           flex: none;
           min-width: unset;
         }
@@ -194,25 +196,20 @@
         }
         .sidebar nav p {
           font-size: 0.65rem;
-          margin: 0 0 0.3rem;
+          margin: 0 0 0.35rem;
         }
         .sidebar nav ul {
           flex-direction: row;
-          flex-wrap: nowrap;
-          overflow-x: auto;
-          gap: 0.4rem;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-          padding-bottom: 2px;
+          flex-wrap: wrap;
+          gap: 0.35rem;
         }
-        .sidebar nav ul::-webkit-scrollbar { display: none; }
         .sidebar nav ul li a {
-          white-space: nowrap;
           font-size: 0.8rem;
-          padding: 0.3rem 0.65rem;
+          padding: 0.25rem 0.6rem;
           background: #f3f4f6;
           border-radius: 20px;
           display: block;
+          white-space: nowrap;
         }
         .sidebar nav ul li a.active,
         .sidebar nav ul li a:hover {
@@ -226,24 +223,24 @@
           border-radius: 0;
           padding: 1.2rem 1rem;
           box-shadow: none;
-          min-width: 0;
         }
 
         .install {
           display: block;
           overflow-x: auto;
           white-space: nowrap;
-          max-width: 100%;
         }
 
         pre {
           font-size: 0.75rem;
           padding: 0.7rem 0.8rem;
+          max-width: 100%;
         }
 
         .formula-block {
-          font-size: 0.85rem;
           padding: 0.55rem 0.4rem;
+          max-width: 100%;
+          overflow-x: auto;
         }
 
         .notebook-links { flex-direction: column; gap: 0.4rem; }
